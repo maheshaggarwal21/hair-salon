@@ -28,9 +28,9 @@ export default function EmployeeLeaderboard({ api, qs }: Props) {
   useEffect(() => {
     setLoading(true);
     fetch(`${api}/api/analytics/employees?${qs}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
-      .catch(console.error)
+      .catch((err) => { console.error(err); setData([]); })
       .finally(() => setLoading(false));
   }, [api, qs]);
 

@@ -6,17 +6,7 @@ const mongoose = require("mongoose");
 const Razorpay = require("razorpay");
 
 // ── MongoDB connection (cached for serverless) ──
-let isConnected = false;
-async function connectDB() {
-  if (isConnected) return;
-  if (!process.env.MONGODB_URI) {
-    console.warn("MONGODB_URI not set — skipping DB connection");
-    return;
-  }
-  await mongoose.connect(process.env.MONGODB_URI);
-  isConnected = true;
-  console.log("MongoDB connected");
-}
+const connectDB = require("./db");
 connectDB().catch((err) => console.error("MongoDB connection error:", err));
 
 // Remove trailing slash so CORS origin matches the browser's Origin header

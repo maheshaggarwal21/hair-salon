@@ -1,8 +1,20 @@
 const express = require("express");
 const XLSX = require("xlsx");
 const Visit = require("../models/Visit");
+const connectDB = require("../db");
 
 const router = express.Router();
+
+// Ensure MongoDB is connected before every analytics request (serverless cold-start safe)
+router.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB connection middleware error:", err);
+    next(err);
+  }
+});
 
 // ── Helper: build date filter from query params ──
 // Parse "YYYY-MM-DD" as LOCAL timezone (not UTC) to avoid off-by-one day issues

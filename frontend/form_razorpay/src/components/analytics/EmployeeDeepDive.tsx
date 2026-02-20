@@ -32,17 +32,17 @@ export default function EmployeeDeepDive({ api, qs }: Props) {
   // Fetch employee list
   useEffect(() => {
     fetch(`${api}/api/analytics/employees?${qs}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((list: EmployeeName[]) => {
-        setEmployees(list);
-        if (list.length > 0) {
+        setEmployees(Array.isArray(list) ? list : []);
+        if (Array.isArray(list) && list.length > 0) {
           setSelected(list[0].name);
         } else {
           setSelected("");
           setData(null);
         }
       })
-      .catch(console.error);
+      .catch((err) => { console.error(err); setEmployees([]); setSelected(""); setData(null); });
   }, [api, qs]);
 
   // Fetch selected employee detail
