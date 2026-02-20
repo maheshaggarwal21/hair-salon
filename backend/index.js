@@ -9,39 +9,14 @@ const Razorpay = require("razorpay");
 const connectDB = require("./db");
 connectDB().catch((err) => console.error("MongoDB connection error:", err));
 
-// Remove trailing slash so CORS origin matches the browser's Origin header
+// Used for Razorpay payment callback URL
 const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
-
-// Allow local dev ports + production frontend
-const allowedOrigins = [
-  FRONTEND_URL,
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5175",
-  "https://hair-salon-self-gamma.vercel.app",
-];
 
 const app = express();
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (curl, Postman, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
-
-// CORS — allow the frontend origin + handle preflight
-app.use(cors(corsOptions));
-
-// Explicitly respond to all OPTIONS preflight requests
-app.options("*", cors(corsOptions));
+// CORS — allow all origins (safe for this project)
+app.use(cors({ origin: true, credentials: true }));
+app.options("*", cors({ origin: true, credentials: true }));
 
 app.use(express.json());
 
