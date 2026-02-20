@@ -284,8 +284,24 @@ app.get("/api/form-data", (_req, res) => {
 // Root route
 app.get("/", (_req, res) => res.json({ service: "Hair Salon Backend API", status: "running" }));
 
-// Health check
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+// Health check — includes DB diagnostics
+app.get("/api/health", async (_req, res) => {
+  try {
+    await connectDB();
+    res.json({
+      status: "ok",
+      mongoState: mongoose.connection.readyState, // 0=disconnected,1=connected,2=connecting,3=disconnecting
+      mongoUri: process.env.MONGODB_URI ? "set" : "NOT SET",
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "error",
+      mongoState: mongoose.connection.readyState,
+      mongoUri: process.env.MONGODB_URI ? "set" : "NOT SET",
+      error: err.message,
+    });
+  }
+});
 
 // ── Analytics routes ──
 app.use("/api/analytics", require("./routes/analytics"));

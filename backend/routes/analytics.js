@@ -6,13 +6,13 @@ const connectDB = require("../db");
 const router = express.Router();
 
 // Ensure MongoDB is connected before every analytics request (serverless cold-start safe)
-router.use(async (_req, _res, next) => {
+router.use(async (_req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
-    console.error("DB connection middleware error:", err);
-    next(err);
+    console.error("DB connection middleware error:", err.message, err.stack);
+    res.status(503).json({ error: "Database unavailable", details: err.message });
   }
 });
 
@@ -73,8 +73,8 @@ router.get("/summary", async (req, res) => {
       to: match.date.$lte,
     });
   } catch (err) {
-    console.error("Summary error:", err);
-    res.status(500).json({ error: "Failed to fetch summary" });
+    console.error("Summary error:", err.message, err.stack);
+    res.status(500).json({ error: "Failed to fetch summary", details: err.message });
   }
 });
 
