@@ -12,12 +12,13 @@ connectDB().catch((err) => console.error("MongoDB connection error:", err));
 // Remove trailing slash so CORS origin matches the browser's Origin header
 const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
 
-// In development, allow multiple local ports
+// Allow local dev ports + production frontend
 const allowedOrigins = [
   FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
+  "https://hair-salon-self-gamma.vercel.app",
 ];
 
 const app = express();
