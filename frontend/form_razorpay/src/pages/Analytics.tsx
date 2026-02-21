@@ -1,3 +1,11 @@
+/**
+ * @file Analytics.tsx
+ * @description Dashboard page that assembles all analytics widgets.
+ *
+ * Date range state is lifted here so every child component shares the
+ * same `from` and `to` query parameters when fetching data.
+ */
+
 import { useState, useCallback } from "react";
 import dayjs from "dayjs";
 import DateFilter from "@/components/analytics/DateFilter";
@@ -9,6 +17,7 @@ import EmployeeDeepDive from "@/components/analytics/EmployeeDeepDive";
 import ExportButton from "@/components/analytics/ExportButton";
 import AppLayout from "@/layouts/AppLayout";
 
+/** Backend API base URL (injected at build time via Vite env vars). */
 const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
 export default function Analytics() {

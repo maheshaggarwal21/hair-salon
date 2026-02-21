@@ -1,3 +1,11 @@
+/**
+ * @file TopServices.tsx
+ * @description Horizontal bar chart + text summary of top-booked services.
+ *
+ * Fetches data from GET /api/analytics/top-services.
+ * Shows up to 10 services, colour-coded by rank.
+ */
+
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 

@@ -1,3 +1,11 @@
+/**
+ * @file DateFilter.tsx
+ * @description Date-range selector with quick presets and custom inputs.
+ *
+ * Presets: Today, This Week, This Month, Last Month, Last 3 Months.
+ * Also provides manual `from` / `to` date pickers.
+ */
+
 import dayjs from "dayjs";
 
 interface Props {

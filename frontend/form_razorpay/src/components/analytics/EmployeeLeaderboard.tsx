@@ -1,3 +1,11 @@
+/**
+ * @file EmployeeLeaderboard.tsx
+ * @description Ranked table of artists sorted by revenue.
+ *
+ * Fetches data from GET /api/analytics/employees.
+ * Highlights the top performer and provides key insights.
+ */
+
 import { useEffect, useState } from "react";
 import { Trophy, Medal } from "lucide-react";
 

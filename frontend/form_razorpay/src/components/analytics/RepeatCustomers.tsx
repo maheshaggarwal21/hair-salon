@@ -1,3 +1,10 @@
+/**
+ * @file RepeatCustomers.tsx
+ * @description Donut chart + stats showing new vs returning customers.
+ *
+ * Fetches data from GET /api/analytics/repeat-customers.
+ */
+
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 

@@ -1,3 +1,12 @@
+/**
+ * @file EmployeeDeepDive.tsx
+ * @description Detailed performance breakdown for a selected employee.
+ *
+ * Fetches the employee list from GET /api/analytics/employees,
+ * then loads per-artist stats from GET /api/analytics/employee/:name.
+ * Includes stat cards, a top-services bar chart, and a written summary.
+ */
+
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { User, TrendingUp, Clock, Users, Award } from "lucide-react";

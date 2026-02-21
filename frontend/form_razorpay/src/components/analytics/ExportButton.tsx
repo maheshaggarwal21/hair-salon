@@ -1,3 +1,10 @@
+/**
+ * @file ExportButton.tsx
+ * @description Button that downloads salon visits as an Excel (.xlsx) file.
+ *
+ * Opens GET /api/analytics/export in a new tab to trigger the download.
+ */
+
 import { Download } from "lucide-react";
 
 interface Props {

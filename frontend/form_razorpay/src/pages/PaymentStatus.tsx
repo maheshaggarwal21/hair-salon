@@ -1,3 +1,15 @@
+/**
+ * @file PaymentStatus.tsx
+ * @description Payment confirmation / failure page.
+ *
+ * Supports two payment flows:
+ *   Flow A — Razorpay Order (embedded checkout): query params include
+ *             `payment_id`, `amount`, `name`, `phone`.
+ *   Flow B — Razorpay Payment Link (legacy): query params include
+ *             standard Razorpay callback fields that are verified
+ *             server-side via /api/verify-payment.
+ */
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";

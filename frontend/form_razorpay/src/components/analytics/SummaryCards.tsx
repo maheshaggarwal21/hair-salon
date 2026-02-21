@@ -1,3 +1,11 @@
+/**
+ * @file SummaryCards.tsx
+ * @description Four KPI cards: Total Revenue, Total Visits,
+ *              Unique Customers, and Average Ticket Size.
+ *
+ * Fetches data from GET /api/analytics/summary.
+ */
+
 import { useEffect, useState } from "react";
 import { IndianRupee, Users, Calendar, TrendingUp } from "lucide-react";
 

@@ -1,3 +1,20 @@
+/**
+ * @file analytics.js
+ * @description Express router providing salon analytics endpoints.
+ *
+ * All routes are prefixed with /api/analytics (mounted in index.js).
+ * A middleware ensures MongoDB is connected before handling any request,
+ * which is critical for Vercel’s serverless cold-start model.
+ *
+ * Endpoints:
+ *   GET /summary           — KPI summary (revenue, visits, customers, avg ticket)
+ *   GET /top-services      — Services ranked by frequency & revenue
+ *   GET /employees         — Employee leaderboard sorted by revenue
+ *   GET /employee/:name    — Deep-dive stats for one employee
+ *   GET /repeat-customers  — New vs returning customer breakdown
+ *   GET /export            — Download all visits as .xlsx
+ */
+
 const express = require("express");
 const XLSX = require("xlsx");
 const Visit = require("../models/Visit");
@@ -5,19 +22,26 @@ const connectDB = require("../db");
 
 const router = express.Router();
 
-// Ensure MongoDB is connected before every analytics request (serverless cold-start safe)
+// ─── Middleware: ensure DB connection on every request ─────────────────────
 router.use(async (_req, res, next) => {
   try {
     await connectDB();
     next();
   } catch (err) {
-    console.error("DB connection middleware error:", err.message, err.stack);
+    console.error("[analytics] DB middleware error:", err.message);
     res.status(503).json({ error: "Database unavailable", details: err.message });
   }
 });
 
-// ── Helper: build date filter from query params ──
-// Parse "YYYY-MM-DD" as LOCAL timezone (not UTC) to avoid off-by-one day issues
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Build a Mongoose `{ date: { $gte, $lte } }` filter from query params.
+ * Dates are parsed as local timezone to avoid off-by-one day issues.
+ *
+ * @param {object} query — Express req.query with optional `from` / `to` (YYYY-MM-DD)
+ * @returns {object} Mongoose filter
+ */
 function dateFilter(query) {
   const filter = {};
   const now = new Date();
@@ -42,7 +66,12 @@ function dateFilter(query) {
   return filter;
 }
 
-// ── Helper: parse "HH:mm" times into work hours ──
+/**
+ * Calculate hours worked from "HH:mm" time strings.
+ * @param {string} startTime — e.g. "09:30"
+ * @param {string} endTime   — e.g. "11:00"
+ * @returns {number} Duration in decimal hours (never negative)
+ */
 function calcHours(startTime, endTime) {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
@@ -324,7 +353,9 @@ router.get("/export", async (req, res) => {
   }
 });
 
-// Health check
-router.get("/health", (_req, res) => res.json({ status: "analytics ok" }));
+// Health check for the analytics sub-router
+router.get("/health", (_req, res) =>
+  res.json({ status: "analytics ok" })
+);
 
 module.exports = router;

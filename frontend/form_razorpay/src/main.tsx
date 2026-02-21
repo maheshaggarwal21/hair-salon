@@ -1,11 +1,22 @@
+/**
+ * @file main.tsx
+ * @description Application entry point.
+ *
+ * Mounts the React root with client-side routing:
+ *   /                — Landing page (hero + CTA)
+ *   /booking         — Appointment booking form with Razorpay checkout
+ *   /payment-status  — Payment confirmation / failure screen
+ *   /analytics       — Business analytics dashboard
+ */
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
-import LandingPage from './pages/LandingPage.tsx'
-import BookingPage from './pages/BookingPage.tsx'
-import PaymentStatus from './pages/PaymentStatus.tsx'
-import Analytics from './pages/Analytics.tsx'
+import LandingPage from './pages/LandingPage'
+import BookingPage from './pages/BookingPage'
+import PaymentStatus from './pages/PaymentStatus'
+import Analytics from './pages/Analytics'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

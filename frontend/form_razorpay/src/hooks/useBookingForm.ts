@@ -1,3 +1,12 @@
+/**
+ * @file useBookingForm.ts
+ * @description Custom React hook encapsulating all booking-form logic.
+ *
+ * Manages form state, validation, dropdown data fetching, and the
+ * full Razorpay checkout flow (load SDK → create order → open modal
+ * → verify → redirect to /payment-status).
+ */
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type {

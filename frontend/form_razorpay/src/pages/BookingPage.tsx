@@ -1,3 +1,16 @@
+/**
+ * @file BookingPage.tsx
+ * @description Full appointment booking form.
+ *
+ * Organised into three visual sections:
+ *   01 — Client Details (name, phone, age, gender)
+ *   02 — Appointment Details (date, artist, times, services, staff)
+ *   03 — Payment (amount, discount, Razorpay checkout)
+ *
+ * All form logic lives in the `useBookingForm` hook; this file
+ * is purely presentational.
+ */
+
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Phone, IndianRupee, Calendar,
