@@ -13,8 +13,8 @@ integrated Razorpay payments, and a real-time analytics dashboard.
 
 | Area | Highlights |
 |------|-----------|
-| **Booking Form** | Client details, date/time picker, artist & service selection, payment integration |
-| **Payments** | Razorpay embedded checkout (order flow) with server-side signature verification |
+| **Booking Form** | Client details, date/time picker, artist & service selection, **auto-calculated pricing** from selected services, **percentage-based discount** |
+| **Payments** | Razorpay embedded checkout (order flow) with server-side HMAC-SHA256 signature verification |
 | **Analytics** | Revenue summary, top services chart, employee leaderboard, repeat-customer donut chart, per-employee deep-dive, Excel export |
 | **UI/UX** | Warm cream & gold theme, Framer Motion animations, responsive layout, canvas sparkles & SVG beam effects |
 
@@ -163,7 +163,7 @@ npm run dev          # starts on http://localhost:5173
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/create-order` | Create a Razorpay order for embedded checkout |
-| `POST` | `/api/verify-order-payment` | Verify signature + save visit to DB |
+| `POST` | `/api/verify-order-payment` | Verify Razorpay signature after checkout |
 | `POST` | `/api/create-payment-link` | Create a hosted payment link (legacy) |
 | `GET`  | `/api/verify-payment` | Verify payment-link callback signature |
 
@@ -171,7 +171,7 @@ npm run dev          # starts on http://localhost:5173
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/form-data` | Static dropdown options (services, artists, etc.) |
+| `GET` | `/api/form-data` | Service catalogue with prices, artists, staff |
 | `GET` | `/api/health` | Server health check |
 
 ### Analytics Routes (mounted at `/api/analytics`)
@@ -184,6 +184,26 @@ npm run dev          # starts on http://localhost:5173
 | `GET` | `/employee/:name` | Deep-dive stats for one artist |
 | `GET` | `/repeat-customers` | New vs returning customer counts |
 | `GET` | `/export` | Download all visits as `.xlsx` |
+
+---
+
+## Booking & Payment Workflow
+
+```
+User selects services (prices shown) → Amount auto-calculated
+      ↓
+Optional discount (%) applied → Payable = Subtotal − Discount
+      ↓
+Frontend calls POST /api/create-order (amount in ₹)
+      ↓
+Backend creates Razorpay Order (converts to paise)
+      ↓
+Razorpay embedded checkout opens in-browser
+      ↓
+On success → POST /api/verify-order-payment (HMAC-SHA256 check)
+      ↓
+Redirect to /payment-status with payment details
+```
 
 ---
 

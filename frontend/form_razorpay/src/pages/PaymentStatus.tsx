@@ -203,7 +203,7 @@ export default function PaymentStatus() {
                     Amount Paid
                   </p>
                   <p className="text-4xl font-bold text-emerald-600">
-                    ₹{(details.amount / 100).toLocaleString("en-IN")}
+                    ₹{details.amount.toLocaleString("en-IN")}
                   </p>
                 </motion.div>
 

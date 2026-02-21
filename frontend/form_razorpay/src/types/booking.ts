@@ -40,11 +40,18 @@ export interface DropdownItem {
   name: string;
 }
 
+/** Service item returned by the backend — includes a price. */
+export interface ServiceItem {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface ApiFormData {
   artists: DropdownItem[];
   serviceTypes: DropdownItem[];
   staff: DropdownItem[];
-  services: DropdownItem[];
+  services: ServiceItem[];
 }
 
 // ─── Form state types ─────────────────────────────────────────────────────────

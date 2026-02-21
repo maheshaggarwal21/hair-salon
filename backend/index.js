@@ -93,6 +93,8 @@ function hmacSha256(payload) {
  * Amount is locked server-side so the customer cannot alter it.
  */
 app.post("/api/create-order", async (req, res) => {
+  if (!razorpay) return res.status(503).json({ error: "Payment service not configured" });
+
   const parsed = validatePaymentInput(req.body, res);
   if (!parsed) return; // 400 already sent
 
@@ -167,6 +169,8 @@ app.post("/api/verify-order-payment", async (req, res) => {
  * customer back to the frontend /payment-status page with query params.
  */
 app.post("/api/create-payment-link", async (req, res) => {
+  if (!razorpay) return res.status(503).json({ error: "Payment service not configured" });
+
   const parsed = validatePaymentInput(req.body, res);
   if (!parsed) return;
 
@@ -217,6 +221,7 @@ app.get("/api/verify-payment", async (req, res) => {
   if (!razorpay_payment_id || !razorpay_payment_link_id || !razorpay_signature) {
     return res.status(400).json({ success: false, error: "Missing payment parameters" });
   }
+  if (!razorpay) return res.status(503).json({ success: false, error: "Payment service not configured" });
 
   // Reconstruct the payload and verify HMAC signature
   const payload = [
@@ -285,16 +290,16 @@ app.get("/api/form-data", (_req, res) => {
       { id: "f3", name: "Pooja Mehta" },
     ],
     services: [
-      { id: "sv1", name: "Classic Haircut — ₹300" },
-      { id: "sv2", name: "Premium Haircut — ₹500" },
-      { id: "sv3", name: "Global Hair Colour — ₹1500" },
-      { id: "sv4", name: "Balayage — ₹3500" },
-      { id: "sv5", name: "Keratin Smoothening — ₹4000" },
-      { id: "sv6", name: "Blow Dry — ₹400" },
-      { id: "sv7", name: "Beard Shaping — ₹200" },
-      { id: "sv8", name: "Hair Spa — ₹800" },
-      { id: "sv9", name: "Scalp Detox — ₹1200" },
-      { id: "sv10", name: "Full Body Waxing — ₹1800" },
+      { id: "sv1", name: "Classic Haircut", price: 300 },
+      { id: "sv2", name: "Premium Haircut", price: 500 },
+      { id: "sv3", name: "Global Hair Colour", price: 1500 },
+      { id: "sv4", name: "Balayage", price: 3500 },
+      { id: "sv5", name: "Keratin Smoothening", price: 4000 },
+      { id: "sv6", name: "Blow Dry", price: 400 },
+      { id: "sv7", name: "Beard Shaping", price: 200 },
+      { id: "sv8", name: "Hair Spa", price: 800 },
+      { id: "sv9", name: "Scalp Detox", price: 1200 },
+      { id: "sv10", name: "Full Body Waxing", price: 1800 },
     ],
   });
 });
