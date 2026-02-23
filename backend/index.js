@@ -95,17 +95,37 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5175",
 ];
 
+/**
+ * Check whether an origin is a Vercel preview/production URL belonging
+ * to the same project.  Accepts:
+ *   - https://<project>-<hash>-<scope>.vercel.app   (preview)
+ *   - https://<project>.vercel.app                   (production alias)
+ */
+const VERCEL_PROJECT = process.env.VERCEL_PROJECT_NAME || "hair-salon";
+function isVercelOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return (
+      hostname.endsWith(".vercel.app") &&
+      hostname.includes(VERCEL_PROJECT)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // ── Express app ──────────────────────────────────────────────────────────────
 const app = express();
 
 // Required for secure cookies behind Vercel's reverse proxy
 app.set("trust proxy", 1);
 
-// CORS — allow configured frontend + common Vite dev ports
+// CORS — allow configured frontend, Vercel previews + common Vite dev ports
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (curl, Postman, same-origin)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || isVercelOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS: origin ${origin} not allowed`));
