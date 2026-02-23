@@ -23,6 +23,7 @@ import {
   Loader2,
   IndianRupee,
   Tag,
+  Trash2,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
@@ -171,6 +172,24 @@ export default function ServiceManagement() {
       body: JSON.stringify({ isActive: true }),
     });
     if (res.ok) fetchServices();
+  };
+
+  // ── Permanent Delete ─────────────────────────────────────────────────
+  const handlePermanentDelete = async (service: ServiceRecord) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete "${service.name}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API}/api/services/${service._id}/permanent`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) fetchServices();
+    } catch {
+      // silently fail; user can retry
+    }
   };
 
   // ── Edit save ──────────────────────────────────────────────────────────────
@@ -507,6 +526,14 @@ export default function ServiceManagement() {
                               <CheckCircle2 className="w-3 h-3" /> Reactivate
                             </button>
                           )}
+
+                          <button
+                            onClick={() => handlePermanentDelete(s)}
+                            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 rounded-lg px-3 py-1.5 transition-all"
+                            title="Permanently delete from database"
+                          >
+                            <Trash2 className="w-3 h-3" /> Delete
+                          </button>
                         </div>
                       </td>
                     </tr>

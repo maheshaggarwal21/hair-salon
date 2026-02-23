@@ -203,4 +203,23 @@ router.delete("/:id", validateId, authorize("owner"), async (req, res) => {
   }
 });
 
+// ─── DELETE /:id/permanent — Hard-delete a service from DB ──────────────────
+
+router.delete("/:id/permanent", validateId, authorize("owner"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const service = await Service.findById(id);
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    await Service.findByIdAndDelete(id);
+    return res.json({ ok: true, message: "Service permanently deleted" });
+  } catch (err) {
+    console.error("[services] Permanent delete error:", err);
+    return res.status(500).json({ error: "Failed to delete service" });
+  }
+});
+
 module.exports = router;

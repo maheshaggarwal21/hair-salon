@@ -196,4 +196,38 @@ router.delete("/users/:id", validateId, async (req, res) => {
   }
 });
 
+// ─── DELETE /users/:id/permanent — Hard-delete a user from DB ───────────────
+
+router.delete("/users/:id/permanent", validateId, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prevent self-deletion
+    if (id === req.session.userId) {
+      return res
+        .status(400)
+        .json({ error: "Cannot delete your own account" });
+    }
+
+    // Prevent deleting the owner account
+    if (user.role === "owner") {
+      return res
+        .status(400)
+        .json({ error: "Cannot delete the owner account" });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    return res.json({ ok: true, message: "User permanently deleted" });
+  } catch (err) {
+    console.error("[admin] Permanent delete user error:", err);
+    return res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
 module.exports = router;

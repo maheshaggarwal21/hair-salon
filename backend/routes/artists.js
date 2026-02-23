@@ -176,4 +176,23 @@ router.delete("/:id", validateId, authorize("manager", "owner"), async (req, res
   }
 });
 
+// ─── DELETE /:id/permanent — Hard-delete an artist from DB ──────────────────
+
+router.delete("/:id/permanent", validateId, authorize("owner"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const artist = await Artist.findById(id);
+    if (!artist) {
+      return res.status(404).json({ error: "Artist not found" });
+    }
+
+    await Artist.findByIdAndDelete(id);
+    return res.json({ ok: true, message: "Artist permanently deleted" });
+  } catch (err) {
+    console.error("[artists] Permanent delete error:", err);
+    return res.status(500).json({ error: "Failed to delete artist" });
+  }
+});
+
 module.exports = router;

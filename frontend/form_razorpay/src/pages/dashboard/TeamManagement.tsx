@@ -21,6 +21,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  Trash2,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
@@ -30,7 +31,7 @@ interface UserRecord {
   _id: string;
   name: string;
   email: string;
-  role: "receptionist" | "manager";
+  role: "receptionist" | "manager" | "owner";
   isActive: boolean;
   createdAt: string;
 }
@@ -73,7 +74,7 @@ export default function TeamManagement() {
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
-    role: "receptionist" as "receptionist" | "manager",
+    role: "receptionist" as "receptionist" | "manager" | "owner",
     newPassword: "",
   });
   const [editFormError, setEditFormError] = useState("");
@@ -171,6 +172,24 @@ export default function TeamManagement() {
       body: JSON.stringify({ isActive: true }),
     });
     if (res.ok) fetchUsers();
+  };
+
+  // ── Permanent Delete ─────────────────────────────────────────────────
+  const handlePermanentDelete = async (user: UserRecord) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete "${user.name}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API}/api/admin/users/${user._id}/permanent`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) fetchUsers();
+    } catch {
+      // silently fail; user can retry
+    }
   };
 
   // ── Edit save ──────────────────────────────────────────────────────────────
@@ -530,6 +549,16 @@ export default function TeamManagement() {
                               className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-800 border border-green-100 hover:border-green-200 rounded-lg px-3 py-1.5 transition-all"
                             >
                               <UserCheck className="w-3 h-3" /> Reactivate
+                            </button>
+                          )}
+
+                          {u.role !== "owner" && (
+                            <button
+                              onClick={() => handlePermanentDelete(u)}
+                              className="flex items-center gap-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 rounded-lg px-3 py-1.5 transition-all"
+                              title="Permanently delete from database"
+                            >
+                              <Trash2 className="w-3 h-3" /> Delete
                             </button>
                           )}
                         </div>
