@@ -45,9 +45,10 @@ router.use(async (_req, res, next) => {
 function dateFilter(query) {
   const filter = {};
   const now = new Date();
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
 
   let from;
-  if (query.from) {
+  if (query.from && dateRe.test(query.from)) {
     const [y, m, d] = query.from.split("-").map(Number);
     from = new Date(y, m - 1, d, 0, 0, 0, 0); // local midnight start-of-day
   } else {
@@ -55,7 +56,7 @@ function dateFilter(query) {
   }
 
   let to;
-  if (query.to) {
+  if (query.to && dateRe.test(query.to)) {
     const [y, m, d] = query.to.split("-").map(Number);
     to = new Date(y, m - 1, d, 23, 59, 59, 999); // local end-of-day
   } else {
@@ -73,6 +74,7 @@ function dateFilter(query) {
  * @returns {number} Duration in decimal hours (never negative)
  */
 function calcHours(startTime, endTime) {
+  if (!startTime || !endTime) return 0;
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
   const diff = (eh * 60 + em) - (sh * 60 + sm);

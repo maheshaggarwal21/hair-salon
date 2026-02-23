@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Razorpay payment integration (Orders API + Payment Links)
- *   - Booking form dropdown data (static JSON)
+ *   - Visit entry form dropdown data (fetched from MongoDB)
  *   - Health-check endpoint with MongoDB diagnostics
  *   - Analytics routes (delegated to ./routes/analytics)
  *
@@ -17,10 +17,69 @@ const cors = require("cors");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const Razorpay = require("razorpay");
+const bcrypt = require("bcryptjs");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 // ── Database ─────────────────────────────────────────────────────────────────
 const connectDB = require("./db");
+const User = require("./models/User");
 connectDB().catch((err) => console.error("[server] MongoDB boot error:", err));
+
+// ── Auto-seed owner account from env vars ────────────────────────────────────
+/**
+ * Ensures exactly one owner account exists in the database.
+ * - If no owner exists → creates one from OWNER_EMAIL / OWNER_PASSWORD env vars
+ * - If an owner exists → updates email, name, and password to match env vars
+ * Runs silently on every startup; skips if env vars are missing.
+ */
+async function ensureOwner() {
+  const email = process.env.OWNER_EMAIL;
+  const password = process.env.OWNER_PASSWORD;
+  const name = "Salon Owner";
+
+  if (!email || !password) {
+    console.warn("[ensureOwner] OWNER_EMAIL / OWNER_PASSWORD not set — skipping owner auto-seed");
+    return;
+  }
+
+  try {
+    await connectDB();
+    const existing = await User.findOne({ role: "owner" });
+
+    if (existing) {
+      // Sync credentials with env vars
+      let changed = false;
+      if (existing.email !== email) { existing.email = email; changed = true; }
+      if (existing.name !== name) { existing.name = name; changed = true; }
+
+      // Only re-hash if the password actually changed
+      const passwordMatch = await bcrypt.compare(password, existing.passwordHash);
+      if (!passwordMatch) {
+        existing.passwordHash = await bcrypt.hash(password, 12);
+        changed = true;
+      }
+
+      if (!existing.isActive) { existing.isActive = true; changed = true; }
+      if (changed) {
+        await existing.save();
+        console.log("[ensureOwner] Owner account updated:", email);
+      }
+    } else {
+      const passwordHash = await bcrypt.hash(password, 12);
+      await User.create({ name, email, passwordHash, role: "owner" });
+      console.log("[ensureOwner] Owner account created:", email);
+    }
+  } catch (err) {
+    console.error("[ensureOwner] Failed:", err.message);
+  }
+}
+ensureOwner();
+
+// ── New: session & auth packages ─────────────────────────────────────────────
+const session = require("express-session");
+const { MongoStore } = require("connect-mongo");
+const { authenticate, authorize } = require("./middleware/authMiddleware");
 
 // ── Configuration ────────────────────────────────────────────────────────────
 /** Frontend URL used for Razorpay payment-link callbacks (redirect after pay). */
@@ -28,13 +87,58 @@ const FRONTEND_URL = (
   process.env.FRONTEND_URL || "http://localhost:5173"
 ).replace(/\/+$/, "");
 
+/** Allowed CORS origins — includes common Vite dev ports */
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
+
 // ── Express app ──────────────────────────────────────────────────────────────
 const app = express();
 
-// Allow all origins — acceptable for an internal salon management tool
-app.use(cors({ origin: true, credentials: true }));
-app.options("*", cors({ origin: true, credentials: true }));
+// Required for secure cookies behind Vercel's reverse proxy
+app.set("trust proxy", 1);
+
+// CORS — allow configured frontend + common Vite dev ports
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, same-origin)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
+
+// Security headers
+app.use(helmet());
+
+// Global rate limiter — 200 requests per 15 min per IP
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }));
+
+// ── Session middleware (stored in MongoDB) ────────────────────────────────────
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret-change-in-prod",
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600, // only update session once per day unless data changes
+  }),
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours
+  },
+}));
 
 // ── Razorpay client (lazy — only created when credentials are provided) ─────
 const razorpay = process.env.RAZORPAY_KEY_ID
@@ -92,7 +196,7 @@ function hmacSha256(payload) {
  * Creates a Razorpay Order for the embedded Checkout SDK on the frontend.
  * Amount is locked server-side so the customer cannot alter it.
  */
-app.post("/api/create-order", async (req, res) => {
+app.post("/api/create-order", authenticate, async (req, res) => {
   if (!razorpay) return res.status(503).json({ error: "Payment service not configured" });
 
   const parsed = validatePaymentInput(req.body, res);
@@ -131,7 +235,7 @@ app.post("/api/create-order", async (req, res) => {
  *
  * Verifies the HMAC-SHA256 signature returned by Razorpay embedded checkout.
  */
-app.post("/api/verify-order-payment", async (req, res) => {
+app.post("/api/verify-order-payment", authenticate, async (req, res) => {
   const {
     razorpay_order_id,
     razorpay_payment_id,
@@ -168,7 +272,7 @@ app.post("/api/verify-order-payment", async (req, res) => {
  * Creates a Razorpay Payment Link (legacy flow). Razorpay redirects the
  * customer back to the frontend /payment-status page with query params.
  */
-app.post("/api/create-payment-link", async (req, res) => {
+app.post("/api/create-payment-link", authenticate, async (req, res) => {
   if (!razorpay) return res.status(503).json({ error: "Payment service not configured" });
 
   const parsed = validatePaymentInput(req.body, res);
@@ -209,7 +313,7 @@ app.post("/api/create-payment-link", async (req, res) => {
  * Verifies the Razorpay Payment Link callback signature, then fetches
  * full payment details (amount, customer info) for the confirmation page.
  */
-app.get("/api/verify-payment", async (req, res) => {
+app.get("/api/verify-payment", authenticate, async (req, res) => {
   const {
     razorpay_payment_id,
     razorpay_payment_link_id,
@@ -253,55 +357,53 @@ app.get("/api/verify-payment", async (req, res) => {
   }
 });
 
+// ─── Auth & Admin Routes ─────────────────────────────────────────────────────
+
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/admin", authenticate, authorize("owner"), require("./routes/admin"));
+app.use("/api/artists", authenticate, require("./routes/artists"));
+app.use("/api/services", authenticate, require("./routes/services"));
+app.use("/api/visits", authenticate, require("./routes/visits"));
+
 // ─── Static Data ─────────────────────────────────────────────────────────────
+
+const Artist = require("./models/Artist");
+const Service = require("./models/Service");
 
 /**
  * GET /api/form-data
- * Returns dropdown options for the booking form:
- *   artists, serviceTypes, staff, services.
- *
- * In a production app this data would live in the database;
- * for now it's hard-coded so the frontend renders instantly.
+ * Returns dropdown options for the visit entry form.
+ * All data is fetched from the database (Artist + Service collections).
  */
-app.get("/api/form-data", (_req, res) => {
-  res.json({
-    artists: [
-      { id: "a1", name: "Priya Sharma" },
-      { id: "a2", name: "Rahul Verma" },
-      { id: "a3", name: "Sneha Patel" },
-      { id: "a4", name: "Arjun Singh" },
-      { id: "a5", name: "Meera Nair" },
-    ],
-    serviceTypes: [
-      { id: "s1", name: "Haircut" },
-      { id: "s2", name: "Hair Colour" },
-      { id: "s3", name: "Highlights" },
-      { id: "s4", name: "Keratin Treatment" },
-      { id: "s5", name: "Blow Dry" },
-      { id: "s6", name: "Beard Trim" },
-      { id: "s7", name: "Hair Spa" },
-      { id: "s8", name: "Scalp Treatment" },
-      { id: "s9", name: "Waxing" },
-      { id: "s10", name: "Facial" },
-    ],
-    staff: [
-      { id: "f1", name: "Anjali Desai" },
-      { id: "f2", name: "Vikram Joshi" },
-      { id: "f3", name: "Pooja Mehta" },
-    ],
-    services: [
-      { id: "sv1", name: "Classic Haircut", price: 300 },
-      { id: "sv2", name: "Premium Haircut", price: 500 },
-      { id: "sv3", name: "Global Hair Colour", price: 1500 },
-      { id: "sv4", name: "Balayage", price: 3500 },
-      { id: "sv5", name: "Keratin Smoothening", price: 4000 },
-      { id: "sv6", name: "Blow Dry", price: 400 },
-      { id: "sv7", name: "Beard Shaping", price: 200 },
-      { id: "sv8", name: "Hair Spa", price: 800 },
-      { id: "sv9", name: "Scalp Detox", price: 1200 },
-      { id: "sv10", name: "Full Body Waxing", price: 1800 },
-    ],
-  });
+app.get("/api/form-data", authenticate, async (_req, res) => {
+  try {
+    await connectDB();
+
+    // Fetch active artists from DB
+    const dbArtists = await Artist.find({ isActive: true }).sort({ name: 1 });
+    const artists = dbArtists.map((a) => ({ id: a._id.toString(), name: a.name }));
+
+    // Fetch active services from DB
+    const dbServices = await Service.find({ isActive: true }).sort({ category: 1, name: 1 });
+    const services = dbServices.map((s) => ({
+      id: s._id.toString(),
+      name: s.name,
+      price: s.price,
+    }));
+
+    // Derive unique categories from active services
+    const categorySet = [...new Set(dbServices.map((s) => s.category).filter(Boolean))];
+    const serviceTypes = categorySet.sort().map((c, i) => ({ id: `cat-${i}`, name: c }));
+
+    res.json({
+      artists,
+      serviceTypes,
+      services,
+    });
+  } catch (err) {
+    console.error("[form-data] Error:", err);
+    res.status(500).json({ error: "Failed to load form data" });
+  }
 });
 
 // ─── Utility Routes ──────────────────────────────────────────────────────────
@@ -336,7 +438,7 @@ app.get("/api/health", async (_req, res) => {
 });
 
 // ─── Analytics Routes (mounted sub-router) ──────────────────────────────────
-app.use("/api/analytics", require("./routes/analytics"));
+app.use("/api/analytics", authenticate, authorize("manager", "owner"), require("./routes/analytics"));
 
 // ─── Server / Vercel Export ──────────────────────────────────────────────────
 // When run locally (`node index.js`), start an HTTP server.

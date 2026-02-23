@@ -40,7 +40,7 @@ export default function EmployeeDeepDive({ api, qs }: Props) {
 
   // Fetch employee list
   useEffect(() => {
-    fetch(`${api}/api/analytics/employees?${qs}`)
+    fetch(`${api}/api/analytics/employees?${qs}`, { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((list: EmployeeName[]) => {
         setEmployees(Array.isArray(list) ? list : []);
@@ -61,7 +61,7 @@ export default function EmployeeDeepDive({ api, qs }: Props) {
       return;
     }
     setLoading(true);
-    fetch(`${api}/api/analytics/employee/${encodeURIComponent(selected)}?${qs}`)
+    fetch(`${api}/api/analytics/employee/${encodeURIComponent(selected)}?${qs}`, { credentials: "include" })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

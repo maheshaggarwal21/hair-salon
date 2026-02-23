@@ -22,6 +22,7 @@ import {
   Phone,
   Hash,
   CalendarCheck,
+  AlertTriangle,
 } from "lucide-react";
 import { SparklesCore } from "@/components/ui/sparkles";
 
@@ -103,7 +104,7 @@ export default function PaymentStatus() {
           </div>
           <div>
             <h1 className="text-base font-bold tracking-tight text-stone-900 leading-none">
-              Hair Salon
+              The Experts
             </h1>
             <p className="text-xs text-stone-500 mt-0.5">Payment Confirmation</p>
           </div>
@@ -137,7 +138,7 @@ export default function PaymentStatus() {
                 href="/"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-700 transition-colors"
               >
-                ← Back to booking
+                ← Back to visit entry
               </a>
             </div>
           )}
@@ -188,7 +189,7 @@ export default function PaymentStatus() {
                     transition={{ delay: 0.3 }}
                     className="text-stone-500 text-sm"
                   >
-                    Your appointment is confirmed. See you soon!
+                    Your visit payment is confirmed. See you soon!
                   </motion.p>
                 </div>
 
@@ -225,6 +226,21 @@ export default function PaymentStatus() {
                 </motion.div>
 
                 {/* CTA */}
+                {searchParams.get("visit_warning") && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2.5 text-sm text-amber-700"
+                  >
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      Payment was collected, but the visit record could not be saved.
+                      Please inform the manager so it can be recorded manually.
+                    </span>
+                  </motion.div>
+                )}
+
                 <motion.a
                   href="/"
                   initial={{ opacity: 0 }}
@@ -235,7 +251,7 @@ export default function PaymentStatus() {
                   className="w-full h-11 rounded-xl bg-stone-900 hover:bg-stone-700 transition-colors text-white text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Scissors className="w-4 h-4" />
-                  Book Another Appointment
+                  Record Another Visit
                 </motion.a>
               </div>
             </motion.div>

@@ -1,20 +1,20 @@
 /**
- * @file BookingPage.tsx
- * @description Full appointment booking form.
+ * @file VisitEntryPage.tsx
+ * @description Visit entry form for recording completed salon visits.
  *
  * Organised into three visual sections:
  *   01 — Client Details (name, phone, age, gender)
- *   02 — Appointment Details (date, artist, times, services, staff)
+ *   02 — Visit Details (date, artist, times, services)
  *   03 — Payment (amount, discount, Razorpay checkout)
  *
- * All form logic lives in the `useBookingForm` hook; this file
+ * All form logic lives in the `useVisitForm` hook; this file
  * is purely presentational.
  */
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Phone, Calendar,
-  Clock, Percent, UserCheck, Calculator,
+  Clock, Percent, Calculator,
 } from "lucide-react";
 import { SparklesCore } from "@/components/ui/sparkles";
 import { Input } from "@/components/ui/input";
@@ -29,15 +29,17 @@ import {
 import { MultiSelect } from "@/components/ui/multi-select";
 import { cn } from "@/lib/utils";
 import AppLayout from "@/layouts/AppLayout";
-import { useBookingForm } from "@/hooks/useBookingForm";
+import { useVisitForm } from "@/hooks/useVisitForm";
 
-export default function BookingPage() {
+export default function VisitEntryPage() {
   const {
     formData,
     errors,
     isLoading,
     paymentError,
     dropdownData,
+    dropdownLoading,
+    dropdownError,
     serviceDisplayItems,
     subtotal,
     discountPct,
@@ -48,25 +50,61 @@ export default function BookingPage() {
     handleMultiSelect,
     handleSubmit,
     handleReset,
-  } = useBookingForm();
+  } = useVisitForm();
 
   return (
-    <AppLayout subtitle="Appointment & Payment Form">
+    <AppLayout subtitle="Visit Entry & Payment Form">
+      <div className="mx-auto max-w-4xl w-full px-6 pt-12 pb-16">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
       >
-        {/* Page title */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-stone-900">New Appointment</h2>
-          <p className="text-sm text-stone-500 mt-1">
-            Fill in the client details below. Fields marked{" "}
-            <span className="text-red-500">*</span> are required.
-          </p>
+        {/* ── Page header ── */}
+        <div className="mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-stone-300/60 bg-white/80 backdrop-blur-sm shadow-sm mb-5"
+          >
+            <span className="text-xs font-semibold text-stone-500 tracking-[0.18em] uppercase">New Visit Entry</span>
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, filter: "blur(10px)", y: 8 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ duration: 0.65, ease: "easeOut", delay: 0.1 }}
+            className="text-4xl font-black tracking-tight text-stone-900 leading-none mb-3"
+          >
+            Record Visit
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+            className="text-base text-stone-400 font-light"
+          >
+            Fill in the details below. Fields marked <span className="text-red-400">*</span> are required.
+          </motion.p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
+          {/* Loading / error for dropdown data */}
+          {dropdownLoading && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-center gap-2">
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="inline-block w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full"
+              />
+              Loading form data…
+            </div>
+          )}
+          {dropdownError && !dropdownLoading && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              Failed to load form data. Check your connection and refresh.
+            </div>
+          )}
           {/* ── Section 1: Client Details ── */}
           <Section title="Client Details" icon="01">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -99,18 +137,37 @@ export default function BookingPage() {
                 </div>
               </Field>
 
-              <Field label="Age" error={errors.age}>
-                <Input
-                  id="age" name="age" type="number"
-                  placeholder="e.g. 28"
-                  value={formData.age}
-                  onChange={handleChange}
-                  min="1" max="120"
-                  className={cn(errors.age && "border-red-400 focus-visible:ring-red-300")}
-                />
+              <Field label="Age" required error={errors.age}>
+                <Select value={formData.age} onValueChange={handleSelect("age")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select age range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1-5">1 – 5</SelectItem>
+                    <SelectItem value="6-10">6 – 10</SelectItem>
+                    <SelectItem value="11-15">11 – 15</SelectItem>
+                    <SelectItem value="16-20">16 – 20</SelectItem>
+                    <SelectItem value="21-25">21 – 25</SelectItem>
+                    <SelectItem value="26-30">26 – 30</SelectItem>
+                    <SelectItem value="31-35">31 – 35</SelectItem>
+                    <SelectItem value="36-40">36 – 40</SelectItem>
+                    <SelectItem value="41-45">41 – 45</SelectItem>
+                    <SelectItem value="46-50">46 – 50</SelectItem>
+                    <SelectItem value="51-55">51 – 55</SelectItem>
+                    <SelectItem value="56-60">56 – 60</SelectItem>
+                    <SelectItem value="61-65">61 – 65</SelectItem>
+                    <SelectItem value="66-70">66 – 70</SelectItem>
+                    <SelectItem value="71-75">71 – 75</SelectItem>
+                    <SelectItem value="76-80">76 – 80</SelectItem>
+                    <SelectItem value="81-85">81 – 85</SelectItem>
+                    <SelectItem value="86-90">86 – 90</SelectItem>
+                    <SelectItem value="91-95">91 – 95</SelectItem>
+                    <SelectItem value="96+">96+</SelectItem>
+                  </SelectContent>
+                </Select>
               </Field>
 
-              <Field label="Gender">
+              <Field label="Gender" required error={errors.gender}>
                 <Select value={formData.gender} onValueChange={handleSelect("gender")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select gender" />
@@ -127,9 +184,9 @@ export default function BookingPage() {
           </Section>
 
           {/* ── Section 2: Appointment Details ── */}
-          <Section title="Appointment Details" icon="02">
+          <Section title="Visit Details" icon="02">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Date of Filling">
+              <Field label="Date of Filling" required error={errors.date}>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
                   <Input
@@ -141,14 +198,16 @@ export default function BookingPage() {
                 </div>
               </Field>
 
-              <Field label="Artist">
+              <Field label="Artist" required error={errors.artist}>
                 <Select value={formData.artist} onValueChange={handleSelect("artist")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select artist" />
                   </SelectTrigger>
                   <SelectContent>
-                    {dropdownData.artists.length === 0 ? (
+                    {dropdownLoading ? (
                       <SelectItem value="_loading" disabled>Loading…</SelectItem>
+                    ) : dropdownData.artists.length === 0 ? (
+                      <SelectItem value="_empty" disabled>No artists added yet</SelectItem>
                     ) : (
                       dropdownData.artists.map((a) => (
                         <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -158,7 +217,7 @@ export default function BookingPage() {
                 </Select>
               </Field>
 
-              <Field label="Start Time" error={errors.startTime}>
+              <Field label="Start Time" required error={errors.startTime}>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
                   <Input
@@ -170,7 +229,7 @@ export default function BookingPage() {
                 </div>
               </Field>
 
-              <Field label="End Time" error={errors.endTime}>
+              <Field label="End Time" required error={errors.endTime}>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
                   <Input
@@ -182,41 +241,23 @@ export default function BookingPage() {
                 </div>
               </Field>
 
-              <Field label="Service Type">
-                <MultiSelect
-                  items={dropdownData.serviceTypes}
-                  values={formData.serviceType}
-                  onValuesChange={handleMultiSelect("serviceType")}
-                  placeholder="Select service types…"
-                  searchPlaceholder="Search service types…"
-                />
+              <Field label="Services" required error={errors.amount} className="sm:col-span-2">
+                {!dropdownLoading && serviceDisplayItems.length === 0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                    No services added yet. Ask the owner to add services first.
+                  </div>
+                ) : (
+                  <MultiSelect
+                    items={serviceDisplayItems}
+                    values={formData.searchService}
+                    onValuesChange={handleMultiSelect("searchService")}
+                    placeholder={dropdownLoading ? "Loading services…" : "Search & select services…"}
+                    searchPlaceholder="Type to search (e.g. hair, beard, skin)…"
+                  />
+                )}
               </Field>
 
-              <Field label="Search Services">
-                <MultiSelect
-                  items={serviceDisplayItems}
-                  values={formData.searchService}
-                  onValuesChange={handleMultiSelect("searchService")}
-                  placeholder="Search & select services…"
-                  searchPlaceholder="Type to search…"
-                />
-              </Field>
 
-              <Field label="Filled By">
-                <div className="relative">
-                  <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none z-10" />
-                  <Select value={formData.filledBy} onValueChange={handleSelect("filledBy")}>
-                    <SelectTrigger className="w-full pl-9">
-                      <SelectValue placeholder="Select staff" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dropdownData.staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </Field>
             </div>
           </Section>
 
@@ -368,6 +409,7 @@ export default function BookingPage() {
           </p>
         </form>
       </motion.div>
+      </div>
     </AppLayout>
   );
 }
@@ -384,17 +426,23 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-8 rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-stone-100 bg-stone-50/60">
-        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-stone-900 text-white text-xs font-bold">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="mb-8 rounded-2xl border border-stone-200/80 bg-white shadow-sm overflow-hidden"
+    >
+      <div className="flex items-center gap-3 px-7 py-5 border-b border-stone-100">
+        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-stone-900 text-white text-xs font-bold shrink-0">
           {icon}
         </span>
-        <h3 className="text-sm font-semibold text-stone-800 uppercase tracking-wide">
+        <h3 className="text-sm font-semibold text-stone-700 uppercase tracking-[0.15em]">
           {title}
         </h3>
       </div>
-      <div className="px-6 py-5">{children}</div>
-    </div>
+      <div className="px-7 py-6">{children}</div>
+    </motion.div>
   );
 }
 
@@ -402,15 +450,17 @@ function Field({
   label,
   required,
   error,
+  className,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className={cn("space-y-1.5", className)}>
       <Label className="text-xs font-semibold tracking-wide uppercase text-stone-500">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}

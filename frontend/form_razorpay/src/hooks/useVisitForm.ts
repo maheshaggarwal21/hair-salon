@@ -1,6 +1,6 @@
 /**
- * @file useBookingForm.ts
- * @description Custom React hook encapsulating all booking-form logic.
+ * @file useVisitForm.ts
+ * @description Custom React hook encapsulating all visit-entry form logic.
  *
  * Manages form state, validation, dropdown data fetching, and the
  * full Razorpay checkout flow (load SDK → create order → open modal
@@ -13,17 +13,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import type {
-  BookingFormData,
-  BookingFormErrors,
+  VisitFormData,
+  VisitFormErrors,
   ApiFormData,
   RazorpayResponse,
-} from "@/types/booking";
+} from "@/types/visit";
 import { loadRazorpayScript } from "@/services/razorpay";
-import { fetchFormData, createOrder, verifyOrderPayment } from "@/services/api";
+import { fetchFormData, createOrder, verifyOrderPayment, createVisit } from "@/services/api";
 
 const today = new Date().toISOString().split("T")[0];
 
-const EMPTY_FORM: BookingFormData = {
+const EMPTY_FORM: VisitFormData = {
   name: "",
   phone: "",
   amount: "",
@@ -33,33 +33,38 @@ const EMPTY_FORM: BookingFormData = {
   endTime: "",
   artist: "",
   serviceType: [],
-  filledBy: "",
   searchService: [],
   discount: "",
   date: today,
 };
 
-export function useBookingForm() {
+export function useVisitForm() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState<BookingFormData>(EMPTY_FORM);
-  const [errors, setErrors] = useState<BookingFormErrors>({});
+  const [formData, setFormData] = useState<VisitFormData>(EMPTY_FORM);
+  const [errors, setErrors] = useState<VisitFormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [dropdownData, setDropdownData] = useState<ApiFormData>({
     artists: [],
     serviceTypes: [],
-    staff: [],
     services: [],
   });
+  const [dropdownLoading, setDropdownLoading] = useState(true);
+  const [dropdownError, setDropdownError] = useState(false);
 
   // Load dropdown options on mount
   useEffect(() => {
+    setDropdownLoading(true);
     fetchFormData()
-      .then(setDropdownData)
+      .then((data) => {
+        setDropdownData(data);
+        setDropdownError(false);
+      })
       .catch(() => {
-        /* silently ignore — backend may not be running locally */
-      });
+        setDropdownError(true);
+      })
+      .finally(() => setDropdownLoading(false));
   }, []);
 
   // ── Service display items for MultiSelect (append price to name) ───────────
@@ -99,21 +104,20 @@ export function useBookingForm() {
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const validate = (): boolean => {
-    const e: BookingFormErrors = {};
+    const e: VisitFormErrors = {};
     if (!formData.name.trim()) e.name = "Name is required";
     else if (formData.name.trim().length < 2) e.name = "At least 2 characters";
     if (!formData.phone.trim()) e.phone = "Phone is required";
     else if (!/^[6-9]\d{9}$/.test(formData.phone.trim()))
       e.phone = "Valid 10-digit Indian mobile number";
+    if (!formData.age) e.age = "Age is required";
+    if (!formData.gender) e.gender = "Gender is required";
+    if (!formData.date) e.date = "Date is required";
+    if (!formData.startTime) e.startTime = "Start time is required";
+    if (!formData.endTime) e.endTime = "End time is required";
+    if (!formData.artist) e.artist = "Artist is required";
     if (subtotal <= 0) e.amount = "Select at least one service";
     else if (payable <= 0) e.amount = "Payable amount must be greater than ₹0";
-    if (
-      formData.age &&
-      (isNaN(Number(formData.age)) ||
-        Number(formData.age) < 1 ||
-        Number(formData.age) > 120)
-    )
-      e.age = "Enter a valid age (1–120)";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -122,21 +126,21 @@ export function useBookingForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof BookingFormErrors]) {
+    if (errors[name as keyof VisitFormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
-  const handleSelect = (field: keyof BookingFormData) => (value: string) => {
+  const handleSelect = (field: keyof VisitFormData) => (value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field as keyof BookingFormErrors]) {
+    if (errors[field as keyof VisitFormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   /** For multi-select fields (string[] values) — replaces the whole array. */
   const handleMultiSelect =
-    (field: keyof BookingFormData) => (values: string[]) => {
+    (field: keyof VisitFormData) => (values: string[]) => {
       setFormData((prev) => ({ ...prev, [field]: values }));
     };
 
@@ -170,7 +174,7 @@ export function useBookingForm() {
         amount: order.amount,
         currency: order.currency,
         name: "Hair Salon",
-        description: "Appointment Payment",
+        description: "Visit Payment",
         order_id: order.order_id,
         prefill: {
           name: formData.name.trim(),
@@ -194,12 +198,47 @@ export function useBookingForm() {
           });
 
           if (result.success) {
+            // Persist the visit in the database
+            let visitRecordFailed = false;
+            try {
+              // Resolve artist ID → name (Visit model stores the display name,
+              // which analytics uses for leaderboard / deep-dive grouping)
+              const selectedArtist = dropdownData.artists.find(
+                (a) => a.id === formData.artist,
+              );
+
+              await createVisit({
+                name: formData.name.trim(),
+                contact: formData.phone.trim(),
+                age: formData.age,
+                gender: formData.gender,
+                date: formData.date,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                artist: selectedArtist?.name ?? formData.artist,
+                serviceType:
+                  formData.serviceType.length > 0
+                    ? formData.serviceType.join(", ")
+                    : undefined,
+                serviceIds: formData.searchService,
+                discountPercent: discountPct,
+                razorpayPaymentId: result.payment_id,
+              });
+            } catch {
+              // Visit creation failed but payment succeeded — flag it
+              console.error("Visit record creation failed after payment");
+              visitRecordFailed = true;
+            }
+
             const params = new URLSearchParams({
               payment_id: result.payment_id,
               amount: String(result.amount),
               name: result.name,
               phone: result.phone,
             });
+            if (visitRecordFailed) {
+              params.set("visit_warning", "true");
+            }
             navigate(`/payment-status?${params}`);
           } else {
             setPaymentError("Payment verification failed. Contact support.");
@@ -225,6 +264,8 @@ export function useBookingForm() {
     isLoading,
     paymentError,
     dropdownData,
+    dropdownLoading,
+    dropdownError,
     serviceDisplayItems,
     subtotal,
     discountPct,

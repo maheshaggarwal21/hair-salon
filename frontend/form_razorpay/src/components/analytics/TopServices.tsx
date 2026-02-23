@@ -28,7 +28,7 @@ export default function TopServices({ api, qs }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${api}/api/analytics/top-services?${qs}`)
+    fetch(`${api}/api/analytics/top-services?${qs}`, { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
       .catch((err) => { console.error(err); setData([]); })

@@ -2,10 +2,11 @@
  * @file ExportButton.tsx
  * @description Button that downloads salon visits as an Excel (.xlsx) file.
  *
- * Opens GET /api/analytics/export in a new tab to trigger the download.
+ * Uses a fetch-based download so the session cookie is sent.
  */
 
-import { Download } from "lucide-react";
+import { useState } from "react";
+import { Download, Loader2 } from "lucide-react";
 
 interface Props {
   api: string;
@@ -13,16 +14,36 @@ interface Props {
 }
 
 export default function ExportButton({ api, qs }: Props) {
-  const handleExport = () => {
-    window.open(`${api}/api/analytics/export?${qs}`, "_blank");
+  const [loading, setLoading] = useState(false);
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${api}/api/analytics/export?${qs}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "salon-export.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <button
       onClick={handleExport}
-      className="flex items-center gap-2 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors"
+      disabled={loading}
+      className="flex items-center gap-2 bg-white hover:bg-stone-100 border border-stone-200 rounded-lg px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors disabled:opacity-60"
     >
-      <Download className="w-4 h-4" />
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
       Export Excel
     </button>
   );

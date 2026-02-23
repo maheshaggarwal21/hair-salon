@@ -33,6 +33,7 @@ export default function Analytics() {
 
   return (
     <AppLayout subtitle="Business Analytics">
+      <div className="mx-auto max-w-6xl w-full px-6 pt-12 pb-16">
       <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -60,6 +61,7 @@ export default function Analytics() {
 
         {/* Employee Deep Dive */}
         <EmployeeDeepDive api={API} qs={qs} />
+      </div>
       </div>
     </AppLayout>
   );

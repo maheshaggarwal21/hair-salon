@@ -1,20 +1,20 @@
 /**
  * @file api.ts
- * @description HTTP client functions for the booking form.
+ * @description HTTP client functions for the visit entry form.
  *
  * All calls hit the Express backend defined by VITE_BACKEND_URL.
  * Each function includes response-status checks and throws on failure
  * so the caller can render user-friendly error messages.
  */
 
-import type { ApiFormData } from "@/types/booking";
+import type { ApiFormData } from "@/types/visit";
 
 /** Backend base URL (injected at build time). */
 const BASE = import.meta.env.VITE_BACKEND_URL as string;
 
-/** Fetch dropdown options for the booking form. */
+/** Fetch dropdown options for the visit entry form. */
 export async function fetchFormData(): Promise<ApiFormData> {
-  const res = await fetch(`${BASE}/api/form-data`);
+  const res = await fetch(`${BASE}/api/form-data`, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to load form data");
   return res.json();
 }
@@ -38,6 +38,7 @@ export async function createOrder(
 ): Promise<CreateOrderResult> {
   const res = await fetch(`${BASE}/api/create-order`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -69,10 +70,49 @@ export async function verifyOrderPayment(
 ): Promise<VerifyOrderResult> {
   const res = await fetch(`${BASE}/api/verify-order-payment`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Verification failed");
+  return data;
+}
+
+// ─── Visit creation ───────────────────────────────────────────────────────────
+
+export interface CreateVisitPayload {
+  name: string;
+  contact: string;
+  age: string;
+  gender: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  artist: string;
+  serviceType?: string;
+  serviceIds: string[];
+  discountPercent: number;
+  razorpayPaymentId: string;
+}
+
+export interface CreateVisitResult {
+  success: boolean;
+  visitId: string;
+  finalTotal: number;
+}
+
+/** Create a Visit document after successful payment. */
+export async function createVisit(
+  payload: CreateVisitPayload
+): Promise<CreateVisitResult> {
+  const res = await fetch(`${BASE}/api/visits`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to create visit record");
   return data;
 }

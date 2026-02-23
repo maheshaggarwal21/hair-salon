@@ -14,8 +14,12 @@ const visitSchema = new mongoose.Schema(
     // ── Client info ──
     name: { type: String, required: true, trim: true },
     contact: { type: String, required: true, trim: true },
-    age: { type: Number, min: 1, max: 120 },
-    gender: { type: String, enum: ["Male", "Female", "Other"] },
+    age: { type: String, required: true, trim: true },      // e.g. "21-25"
+    gender: {
+      type: String,
+      required: true,
+      enum: ["male", "female", "other", "prefer_not"],
+    },
 
     // ── Timing ──
     date: { type: Date, required: true },
@@ -31,7 +35,7 @@ const visitSchema = new mongoose.Schema(
         price: { type: Number, required: true, min: 0 },
       },
     ],
-    filledBy: { type: String, trim: true },
+    filledBy: { type: String, required: true, trim: true },
 
     // ── Billing ──
     subtotal: { type: Number, required: true, min: 0 },
