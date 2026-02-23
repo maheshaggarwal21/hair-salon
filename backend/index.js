@@ -24,16 +24,20 @@ const rateLimit = require("express-rate-limit");
 // ── Database ─────────────────────────────────────────────────────────────────
 const connectDB = require("./db");
 const User = require("./models/User");
-connectDB().catch((err) => console.error("[server] MongoDB boot error:", err));
 
 // ── Auto-seed owner account from env vars ────────────────────────────────────
 /**
  * Ensures exactly one owner account exists in the database.
  * - If no owner exists → creates one from OWNER_EMAIL / OWNER_PASSWORD env vars
  * - If an owner exists → updates email, name, and password to match env vars
- * Runs silently on every startup; skips if env vars are missing.
+ * Runs lazily on the first request (not at module load) to avoid unhandled
+ * rejection crashes in Vercel's serverless environment.
  */
+let ownerSeeded = false;
 async function ensureOwner() {
+  if (ownerSeeded) return;
+  ownerSeeded = true; // Mark immediately to prevent concurrent runs
+
   const email = process.env.OWNER_EMAIL;
   const password = process.env.OWNER_PASSWORD;
   const name = "Salon Owner";
@@ -71,10 +75,10 @@ async function ensureOwner() {
       console.log("[ensureOwner] Owner account created:", email);
     }
   } catch (err) {
+    ownerSeeded = false; // Allow retry on next request
     console.error("[ensureOwner] Failed:", err.message);
   }
 }
-ensureOwner();
 
 // ── New: session & auth packages ─────────────────────────────────────────────
 const session = require("express-session");
@@ -136,6 +140,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
+
+// Lazy owner-seed + DB warm-up on the first request
+app.use(async (_req, _res, next) => {
+  try { await ensureOwner(); } catch { /* logged inside ensureOwner */ }
+  next();
+});
 
 // Security headers
 app.use(helmet());
